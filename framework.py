@@ -41,7 +41,7 @@ class Framework(object):
         self.word_vec = tf.placeholder(dtype=tf.float32, shape=[None, FLAGS.word_size], name='word_vec')
         self.pos1 = tf.placeholder(dtype=tf.int32, shape=[None, FLAGS.max_length], name='input_pos1')
         self.pos2 = tf.placeholder(dtype=tf.int32, shape=[None, FLAGS.max_length], name='input_pos2')
-        sefl.length = tf.placeholder(dtype=tf.int32, shape=[None], name='input_length')
+        self.length = tf.placeholder(dtype=tf.int32, shape=[None], name='input_length')
         self.mask = tf.placeholder(dtype=tf.int32, shape=[None, FLAGS.max_length], name='input_mask')
         self.label = tf.placeholder(dtype=tf.int32, shape=[None], name='label')
         self.label_for_select = tf.placeholder(dtype=tf.int32, shape=[None], name='label_for_select')
