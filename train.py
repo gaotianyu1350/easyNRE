@@ -11,6 +11,7 @@ import sys
 FLAGS = tf.app.flags.FLAGS
 tf.app.flags.DEFINE_string('export_path','./data','path to data')
 
+# config file
 config_file = open(os.path.join(FLAGS.export_path, "config"), 'r')
 config = json.loads(config_file.read())
 config_file.close()

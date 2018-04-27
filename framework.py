@@ -50,7 +50,7 @@ class Framework(object):
 
         # Network
         self.embedding = Embedding(is_training, self.word_vec, self.word, self.pos1, self.pos2)
-        self.encoder = Encoder(is_training, self.mask)
+        self.encoder = Encoder(is_training, length=self.length, mask=self.mask)
         self.selector = Selector(is_training, self.scope, self.label_for_select)
         self.classifier = Classifier(is_training, self.label, self.weights)
 
