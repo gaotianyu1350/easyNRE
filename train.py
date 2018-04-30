@@ -27,6 +27,8 @@ tf.app.flags.DEFINE_integer('word_size', 50, 'word embedding size')
 
 tf.app.flags.DEFINE_integer('max_epoch',60,'maximum of training epochs')
 tf.app.flags.DEFINE_integer('batch_size',160,'entity numbers used each training time')
+tf.app.flags.DEFINE_integer('test_batch_size', 100, 'batch size during testing')
+
 tf.app.flags.DEFINE_float('learning_rate',0.5,'entity numbers used each training time')
 tf.app.flags.DEFINE_float('weight_decay',0.00001,'weight_decay')
 tf.app.flags.DEFINE_float('keep_prob',0.7,'dropout rate')

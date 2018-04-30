@@ -250,6 +250,8 @@ class Framework(object):
             stack_output = np.concatenate(stack_output, axis=0)
             stack_label = np.concatenate(stack_label, axis=0)
             exclude_na_flatten_output = stack_output[:,1:]
+
+            # FIXME: this seems problematic
             exclude_na_flatten_label = stack_label[:,1:]
 
             np.save(os.path.join(FLAGS.test_result_dir, 'test_result' + '_' + str(epoch) + '.npy'), exclude_na_flatten_output)
@@ -262,4 +264,4 @@ def average_precision_score(labels, output, average='micro'):
     return 0.0
 
 def draw_pr_plot(result_list, label_path):
-     pass
+    pass
