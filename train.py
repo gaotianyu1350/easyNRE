@@ -32,6 +32,7 @@ tf.app.flags.DEFINE_float('keep_prob',0.7,'dropout rate')
 
 tf.app.flags.DEFINE_string('model_dir','./checkpoint/','path to store model')
 tf.app.flags.DEFINE_string('summary_dir','./summary','path to store summary_dir')
+tf.app.flags.DEFINE_string('test_result_dir', './test_result', 'path to store the test results')
 tf.app.flags.DEFINE_boolean('use_adv', False, 'use adversarial training or not')
 tf.app.flags.DEFINE_integer('save_epoch', 2, 'save the checkpoint after how many epoches')
 

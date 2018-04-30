@@ -63,7 +63,7 @@ class Framework(object):
         # Session
         self.sess = None
 
-    def load_data(self):
+    def load_train_data(self):
         print 'reading training data...'
         self.data_word_vec = np.load(os.path.join(FLAGS.export_path, 'vec.npy'))
         self.data_instance_triple = np.load(os.path.join(FLAGS.export_path, 'train_instance_triple.npy'))
@@ -74,6 +74,7 @@ class Framework(object):
         self.data_train_pos1 = np.load(os.path.join(FLAGS.export_path, 'train_pos1.npy'))
         self.data_train_pos2 = np.load(os.path.join(FLAGS.export_path, 'train_pos2.npy'))
         self.data_train_mask = np.load(os.path.join(FLAGS.export_path, 'train_mask.npy'))
+
         print 'reading finished'
         print 'mentions         : %d' % (len(self.data_instance_triple))
         print 'sentences        : %d' % (len(self.data_train_length))
@@ -92,8 +93,28 @@ class Framework(object):
             self.reltot[i] = 1 / (self.reltot[i] ** (0.05))
         print self.reltot
 
-    def init_model(self, loss, output, optimizer=tf.train.GradientDescentOptimizer, pretrain_model=None):
-        print 'initializing model...'
+    def load_test_data(self)
+        print 'reading test data...'
+        self.data_word_vec = np.load(os.path.join(FLAGS.export_path, 'vec.npy'))
+        self.data_instance_triple = np.load(os.path.join(FLAGS.export_path, 'test_instance_triple.npy'))
+        self.data_instance_scope = np.load(os.path.join(FLAGS.export_path, 'test_instance_scope.npy'))
+        self.data_test_length = np.load(os.path.join(FLAGS.export_path, 'test_len.npy'))
+        self.data_test_label = np.load(os.path.join(FLAGS.export_path, 'test_label.npy'))
+        self.data_test_word = np.load(os.path.join(FLAGS.export_path, 'test_word.npy'))
+        self.data_test_pos1 = np.load(os.path.join(FLAGS.export_path, 'test_pos1.npy'))
+        self.data_test_pos2 = np.load(os.path.join(FLAGS.export_path, 'test_pos2.npy'))
+        self.data_test_mask = np.load(os.path.join(FLAGS.export_path, 'test_mask.npy'))
+
+        print 'reading finished'
+        print 'mentions         : %d' % (len(self.data_instance_triple))
+        print 'sentences        : %d' % (len(self.data_train_length))
+        print 'relations        : %d' % (FLAGS.num_classes)
+        print 'word size        : %d' % (FLAGS.word_size)
+        print 'position size     : %d' % (FLAGS.pos_size)
+        print 'hidden size        : %d' % (FLAGS.hidden_size)
+
+    def init_train_model(self, loss, output, optimizer=tf.train.GradientDescentOptimizer, pretrain_model=None):
+        print 'initializing training model...'
         # Loss and output
         self.loss = loss
         self.output = output
@@ -117,6 +138,13 @@ class Framework(object):
         else:
             self.saver.restore(self.sess, pretrain_model)
 
+        print 'initializing finished'
+
+    def init_test_model(self, output):
+        print 'initializing test model...'
+        self.output = output
+        self.sess = tf.Session()
+        self.saver = tf.train.Saver(max_to_keep=None)
         print 'initializing finished'
 
     def train_one_step(self, index, scope, weights, label, result_needed=[]):
@@ -147,10 +175,28 @@ class Framework(object):
 
         return result
 
+    def test_one_step(self, index, scope, label, result_needed=[]):
+        feed_dict = {
+            self.word: self.data_test_word[index, :],
+            self.word_vec: self.data_word_vec,
+            self.pos1: self.data_test_pos1[index, :],
+            self.pos2: self.data_test_pos2[index, :],
+            self.mask: self.data_test_mask[index, :],
+            self.length: self.data_test_length,
+            self.label: label,
+            self.label_for_select: self.data_test_label[index],
+            self.scope: np.array(scope),
+        }
+        result = self.sess.run([self.output] + result_needed, feed_dict)
+        self.test_output = result[0]
+        result = result[1:]
+
+        return result
+    
     def train(self, one_step=train_one_step):
         train_order = range(len(self.data_instance_triple))
-        for one_epoch in range(FLAGS.max_epoch):
-            print('epoch ' + str(one_epoch + 1) + ' starts...')
+        for epoch in range(FLAGS.max_epoch):
+            print('epoch ' + str(epoch + 1) + ' starts...')
             self.acc_NA.clear()
             self.acc_not_NA.clear()
             self.acc_total.clear()
@@ -170,11 +216,46 @@ class Framework(object):
                 loss = one_step(self, index, scope, weights, label, [self.loss])
 
                 time_str = datetime.datetime.now().isoformat()
-                sys.stdout.write("epoch %d step %d time %s | loss : %f, NA accuracy: %f, not NA accuracy: %f, total accuracy %f" % (one_epoch, i, time_str, loss[0], self.acc_NA.get(), self.acc_not_NA.get(), self.acc_total.get()) + '\r')
+                sys.stdout.write("epoch %d step %d time %s | loss : %f, NA accuracy: %f, not NA accuracy: %f, total accuracy %f" % (epoch, i, time_str, loss[0], self.acc_NA.get(), self.acc_not_NA.get(), self.acc_total.get()) + '\r')
                 sys.stdout.flush()
 
-            if (one_epoch + 1) % FLAGS.save_epoch == 0:
-                print 'epoch ' + str(one_epoch + 1) + ' has finished'
+            if (epoch + 1) % FLAGS.save_epoch == 0:
+                print 'epoch ' + str(epoch + 1) + ' has finished'
                 print 'saving model...'
-                path = self.saver.save(self.sess, os.path.join(FLAGS.model_dir, 'checkpoint'), global_step=self.step)
+                path = self.saver.save(self.sess, os.path.join(FLAGS.checkpoint_dir, 'checkpoint'), global_step=epoch)
                 print 'have saved model to ' + path
+
+    def test(self, epoch_range, one_step=test_one_step):
+        for epoch in epoch_range:
+            print 'start testing checkpoint, iteration =', it
+            saver.restore(sess, os.path.join(FLAGS.checkpoint_dir, 'checkpoint' + '-' + str(epoch)))
+            stack_output = []
+            stack_label = []
+            for i in range(int(len(self.data_instance_scope) / FLAGS.test_batch_size)):
+                input_scope = self.test_instance_scope[i * FLAGS.test_batch_size:(i + 1) * FLAGS.test_batch_size]
+                index = []
+                scope = [0]
+                label = []
+                for num in input_scope:
+                    index = index + range(num[0], num[1] + 1) label.append(self.data_test_label[num[0]])
+                    scope.append(scope[len(scope) - 1] + num[1] - num[0] + 1)
+
+                one_step(self, index, scope, label, [])
+                stack_output.append(self.test_output)
+                stack_label.append(self.label)
+            
+            print 'evaluating...'
+            
+            stack_output = np.concatenate(stack_output, axis=0)
+            stack_label = np.concatenate(stack_label, axis=0)
+            exclude_na_flatten_output = stack_output[:,1:]
+            exclude_na_flatten_label = stack_label[:,1:]
+
+            np.save(os.path.join(FLAGS.test_result_dir, 'test_result' + '_' + str(epoch) + '.npy', exclude_na_flatten_output)
+            np.save(os.path.join(FLAGS.test_result_dir, 'test_label.npy', exclude_na_flatten_label)
+
+            average_precision = average_precision_score(exclude_na_flatten_label, exclude_na_flatten_output, average="micro")
+            print 'average precision:', average_precision
+
+def draw_pr_plot(result_list, label_path):
+     
