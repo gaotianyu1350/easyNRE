@@ -93,7 +93,7 @@ class Framework(object):
             self.reltot[i] = 1 / (self.reltot[i] ** (0.05))
         print self.reltot
 
-    def load_test_data(self)
+    def load_test_data(self):
         print 'reading test data...'
         self.data_word_vec = np.load(os.path.join(FLAGS.export_path, 'vec.npy'))
         self.data_instance_triple = np.load(os.path.join(FLAGS.export_path, 'test_instance_triple.npy'))
@@ -227,17 +227,18 @@ class Framework(object):
 
     def test(self, epoch_range, one_step=test_one_step):
         for epoch in epoch_range:
-            print 'start testing checkpoint, iteration =', it
-            saver.restore(sess, os.path.join(FLAGS.checkpoint_dir, 'checkpoint' + '-' + str(epoch)))
+            print 'start testing checkpoint, iteration =', epoch
+            self.saver.restore(self.sess, os.path.join(FLAGS.checkpoint_dir, 'checkpoint' + '-' + str(epoch)))
             stack_output = []
             stack_label = []
             for i in range(int(len(self.data_instance_scope) / FLAGS.test_batch_size)):
-                input_scope = self.test_instance_scope[i * FLAGS.test_batch_size:(i + 1) * FLAGS.test_batch_size]
+                input_scope = self.data_instance_scope[i * FLAGS.test_batch_size:(i + 1) * FLAGS.test_batch_size]
                 index = []
                 scope = [0]
                 label = []
                 for num in input_scope:
-                    index = index + range(num[0], num[1] + 1) label.append(self.data_test_label[num[0]])
+                    index = index + range(num[0], num[1] + 1) 
+                    label.append(self.data_test_label[num[0]])
                     scope.append(scope[len(scope) - 1] + num[1] - num[0] + 1)
 
                 one_step(self, index, scope, label, [])
@@ -251,11 +252,14 @@ class Framework(object):
             exclude_na_flatten_output = stack_output[:,1:]
             exclude_na_flatten_label = stack_label[:,1:]
 
-            np.save(os.path.join(FLAGS.test_result_dir, 'test_result' + '_' + str(epoch) + '.npy', exclude_na_flatten_output)
-            np.save(os.path.join(FLAGS.test_result_dir, 'test_label.npy', exclude_na_flatten_label)
+            np.save(os.path.join(FLAGS.test_result_dir, 'test_result' + '_' + str(epoch) + '.npy'), exclude_na_flatten_output)
+            np.save(os.path.join(FLAGS.test_result_dir, 'test_label.npy'), exclude_na_flatten_label)
 
             average_precision = average_precision_score(exclude_na_flatten_label, exclude_na_flatten_output, average="micro")
             print 'average precision:', average_precision
 
+def average_precision_score(labels, output, average='micro'):
+    return 0.0
+
 def draw_pr_plot(result_list, label_path):
-     
+     pass

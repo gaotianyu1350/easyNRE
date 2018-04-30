@@ -7,6 +7,7 @@ import network
 import json
 from sklearn.metrics import average_precision_score
 import sys
+from framework import Framework
 
 FLAGS = tf.app.flags.FLAGS
 tf.app.flags.DEFINE_string('export_path','./data','path to data')
@@ -36,7 +37,7 @@ tf.app.flags.DEFINE_string('test_result_dir', './test_result', 'path to store th
 tf.app.flags.DEFINE_boolean('use_adv', False, 'use adversarial training or not')
 tf.app.flags.DEFINE_integer('save_epoch', 2, 'save the checkpoint after how many epoches')
 
-from framework import Framework 
+
 def main(_):
     framework = Framework(is_training=True)
 
@@ -48,8 +49,8 @@ def main(_):
     loss = framework.classifier.softmax_cross_entropy(x)
     output = framework.classifier.output(x)
     
-    framework.init_model(loss, output, optimizer=tf.train.GradientDescentOptimizer)
-    framework.load_data()
+    framework.init_train_model(loss, output, optimizer=tf.train.GradientDescentOptimizer)
+    framework.load_train_data()
     framework.train()
 
 if __name__ == "__main__":
