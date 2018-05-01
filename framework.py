@@ -249,10 +249,9 @@ class Framework(object):
             
             stack_output = np.concatenate(stack_output, axis=0)
             stack_label = np.concatenate(stack_label, axis=0)
-            exclude_na_flatten_output = stack_output[:,1:]
+            exclude_na_flatten_output = stack_output
 
-            # FIXME: this seems problematic
-            exclude_na_flatten_label = stack_label[:,1:]
+            exclude_na_flatten_label = stack_label
 
             np.save(os.path.join(FLAGS.test_result_dir, 'test_result' + '_' + str(epoch) + '.npy'), exclude_na_flatten_output)
             np.save(os.path.join(FLAGS.test_result_dir, 'test_label.npy'), exclude_na_flatten_label)
@@ -260,8 +259,24 @@ class Framework(object):
             average_precision = average_precision_score(exclude_na_flatten_label, exclude_na_flatten_output, average="micro")
             print 'average precision:', average_precision
 
+            pr = draw_pr_plot(stack_label, stack_output)
+            np.savetxt('pr%d.txt' % epoch, pr)
+
 def average_precision_score(labels, output, average='micro'):
     return 0.0
 
-def draw_pr_plot(result_list, label_path):
-    pass
+def draw_pr_plot(labels, output):
+    N = len(output)
+    K = output.shape[1]
+    candidates = []
+    for i in range(0, N):
+        for j in range(1, K):
+            candidates.append((output[i, j], j, i))
+    
+    cnt = 0
+    res = []
+    for past, (_, L, idx) in enumerate(sorted(candidates, reverse=True)):
+        if labels[idx] == L:
+            cnt += 1
+            res.append([cnt / N, (past + 1) / N])
+    return np.array(res)
