@@ -27,33 +27,42 @@ tf.app.flags.DEFINE_integer('word_size', 50, 'word embedding size')
 
 tf.app.flags.DEFINE_integer('max_epoch',60,'maximum of training epochs')
 tf.app.flags.DEFINE_integer('batch_size',160,'entity numbers used each training time')
-tf.app.flags.DEFINE_integer('test_batch_size', 100, 'batch size during testing')
+tf.app.flags.DEFINE_integer('test_batch_size', 160, 'batch size during testing')
 
 tf.app.flags.DEFINE_float('learning_rate',0.5,'entity numbers used each training time')
 tf.app.flags.DEFINE_float('weight_decay',0.00001,'weight_decay')
 tf.app.flags.DEFINE_float('keep_prob',0.7,'dropout rate')
 
-tf.app.flags.DEFINE_string('model_dir','./checkpoint/','path to store model')
+tf.app.flags.DEFINE_string('checkpoint_dir','./checkpoint/','path to store model')
 tf.app.flags.DEFINE_string('summary_dir','./summary','path to store summary_dir')
 tf.app.flags.DEFINE_string('test_result_dir', './test_result', 'path to store the test results')
 tf.app.flags.DEFINE_boolean('use_adv', False, 'use adversarial training or not')
 tf.app.flags.DEFINE_integer('save_epoch', 2, 'save the checkpoint after how many epoches')
+tf.app.flags.DEFINE_integer('test_epoch', 9, 'epoch to be tested')
 
+tf.app.flags.DEFINE_boolean('is_train', True, 'training or testing')
 
 def main(_):
-    framework = Framework(is_training=True)
+    framework = Framework(is_training=FLAGS.is_train)
 
     word_embedding = framework.embedding.word_embedding()
     pos_embedding = framework.embedding.pos_embedding()
     embedding = framework.embedding.concat_embedding(word_embedding, pos_embedding)
     x = framework.encoder.pcnn(embedding, activation=tf.nn.relu)
     x = framework.selector.attention(x)
-    loss = framework.classifier.softmax_cross_entropy(x)
     output = framework.classifier.output(x)
     
-    framework.init_train_model(loss, output, optimizer=tf.train.GradientDescentOptimizer)
-    framework.load_train_data()
-    framework.train()
+    if FLAGS.is_train:
+        loss = framework.classifier.softmax_cross_entropy(x)
+        framework.init_train_model(loss, output, optimizer=tf.train.GradientDescentOptimizer)
+        framework.load_train_data()
+        framework.train()
+        
+    else:
+        framework.init_test_model(x, output)
+        framework.load_test_data()
+        framework.test([FLAGS.test_epoch])
+
 
 if __name__ == "__main__":
     tf.app.run() 

@@ -107,7 +107,7 @@ class Framework(object):
 
         print 'reading finished'
         print 'mentions         : %d' % (len(self.data_instance_triple))
-        print 'sentences        : %d' % (len(self.data_train_length))
+        print 'sentences        : %d' % (len(self.data_test_length))
         print 'relations        : %d' % (FLAGS.num_classes)
         print 'word size        : %d' % (FLAGS.word_size)
         print 'position size     : %d' % (FLAGS.pos_size)
@@ -140,8 +140,9 @@ class Framework(object):
 
         print 'initializing finished'
 
-    def init_test_model(self, output):
+    def init_test_model(self, x, output):
         print 'initializing test model...'
+        self.x = x
         self.output = output
         self.sess = tf.Session()
         self.saver = tf.train.Saver(max_to_keep=None)
@@ -187,9 +188,10 @@ class Framework(object):
             self.label_for_select: self.data_test_label[index],
             self.scope: np.array(scope),
         }
-        result = self.sess.run([self.output] + result_needed, feed_dict)
+        result = self.sess.run([self.output, self.x] + result_needed, feed_dict)
         self.test_output = result[0]
-        result = result[1:]
+        self.test_x = result[1]
+        result = result[2:]
 
         return result
     
@@ -228,8 +230,8 @@ class Framework(object):
     def test(self, epoch_range, one_step=test_one_step):
         for epoch in epoch_range:
             print 'start testing checkpoint, iteration =', epoch
-            self.saver.restore(self.sess, os.path.join(FLAGS.checkpoint_dir, 'checkpoint' + '-' + str(epoch)))
-            stack_output = []
+            self.saver.restore(self.sess, os.path.join(FLAGS.checkpoint_dir, 'checkpoint-' + str(epoch)))
+            stack_x = []
             stack_label = []
             for i in range(int(len(self.data_instance_scope) / FLAGS.test_batch_size)):
                 input_scope = self.data_instance_scope[i * FLAGS.test_batch_size:(i + 1) * FLAGS.test_batch_size]
@@ -242,24 +244,25 @@ class Framework(object):
                     scope.append(scope[len(scope) - 1] + num[1] - num[0] + 1)
 
                 one_step(self, index, scope, label, [])
-                stack_output.append(self.test_output)
-                stack_label.append(self.label)
+                stack_x.append(self.test_x)
+                stack_label.append(label)
+                assert(len(self.test_x) == len(label))
             
             print 'evaluating...'
             
-            stack_output = np.concatenate(stack_output, axis=0)
-            stack_label = np.concatenate(stack_label, axis=0)
-            exclude_na_flatten_output = stack_output
+            stack_x = np.concatenate(stack_x, axis=0)
+            stack_label = np.hstack(stack_label)
+            exclude_na_flatten_output = stack_x
 
             exclude_na_flatten_label = stack_label
 
-            np.save(os.path.join(FLAGS.test_result_dir, 'test_result' + '_' + str(epoch) + '.npy'), exclude_na_flatten_output)
-            np.save(os.path.join(FLAGS.test_result_dir, 'test_label.npy'), exclude_na_flatten_label)
+            # np.save(os.path.join(FLAGS.test_result_dir, 'test_result' + '_' + str(epoch) + '.npy'), exclude_na_flatten_output)
+            # np.save(os.path.join(FLAGS.test_result_dir, 'test_label.npy'), exclude_na_flatten_label)
 
             average_precision = average_precision_score(exclude_na_flatten_label, exclude_na_flatten_output, average="micro")
             print 'average precision:', average_precision
 
-            pr = draw_pr_plot(stack_label, stack_output)
+            pr = draw_pr_plot(stack_label, stack_x)
             np.savetxt('pr%d.txt' % epoch, pr)
 
 def average_precision_score(labels, output, average='micro'):
@@ -273,10 +276,11 @@ def draw_pr_plot(labels, output):
         for j in range(1, K):
             candidates.append((output[i, j], j, i))
     
+    cnt_rel = sum([(labels[i] != 0) for i in range(0, N)])
     cnt = 0
     res = []
     for past, (_, L, idx) in enumerate(sorted(candidates, reverse=True)):
         if labels[idx] == L:
             cnt += 1
-            res.append([cnt / N, (past + 1) / N])
+            res.append([float(cnt) / cnt_rel, float(cnt) / (past + 1)])
     return np.array(res)
