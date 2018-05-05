@@ -14,9 +14,7 @@ def main():
     models = sys.argv[1:]
     for model in models:
         y_true = np.load(os.path.join(result_dir, model +'_label' + '.npy')) 
-        y_scores = np.load(os.path.join(model + '_output' + '.npy'))
-        y_true = np.reshape(y_true,(-1))
-        y_scores = np.reshape(y_scores,(-1))
+        y_scores = np.load(os.path.join(result_dir, model + '_output' + '.npy'))
     
         precision, recall, threshold = precision_recall_curve(y_true, y_scores)
         plt.plot(recall, precision, lw=2, label=model)

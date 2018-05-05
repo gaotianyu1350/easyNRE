@@ -28,21 +28,16 @@ tf.app.flags.DEFINE_float('batch_size',160,'entity numbers used each training ti
 tf.app.flags.DEFINE_string('checkpoint_dir', './checkpoint/', 'path to store checkpoint')
 tf.app.flags.DEFINE_string('test_result_dir', './test_result', 'path to store the test results')
 
-tf.app.flags.DEFINE_string('model_name', 'model', 'model\'s name')
+tf.app.flags.DEFINE_string('model_name', 'pcnn_att', 'model\'s name')
+tf.app.flags.DEFINE_string('epoch_range', '(5, 20)', 'checkpoint epoch range')
 
 from framework import Framework 
 def main(_):
-    framework = Framework(is_training=False)
+    from model.pcnn_att import pcnn_att
+    from model.cnn_att import cnn_att
 
-    word_embedding = framework.embedding.word_embedding()
-    pos_embedding = framework.embedding.pos_embedding()
-    embedding = framework.embedding.concat_embedding(word_embedding, pos_embedding)
-    x = framework.encoder.pcnn(embedding, activation=tf.nn.relu)
-    x = framework.selector.attention(x)
-   
-    framework.init_test_model(x)
-    framework.load_test_data()
-    framework.test(range(16, 18))
+    model = locals()[FLAGS.model_name]
+    model(is_training=False)
 
 if __name__ == "__main__":
     tf.app.run() 

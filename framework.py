@@ -195,6 +195,8 @@ class Framework(object):
         return result
     
     def train(self, one_step=train_one_step):
+        if not os.path.exists(FLAGS.checkpoint_dir):
+            os.mkdir(FLAGS.checkpoint_dir)
         train_order = range(len(self.data_instance_triple))
         for epoch in range(FLAGS.max_epoch):
             print('epoch ' + str(epoch + 1) + ' starts...')
@@ -226,13 +228,17 @@ class Framework(object):
                 path = self.saver.save(self.sess, os.path.join(FLAGS.checkpoint_dir, FLAGS.model_name), global_step=epoch)
                 print 'have saved model to ' + path
 
-    def test(self, epoch_range, one_step=test_one_step):
+    def test(self, one_step=test_one_step):
+        epoch_range = eval(FLAGS.epoch_range)
+        epoch_range = range(epoch_range[0], epoch_range[1])
         save_label = None
         save_output = None
         best_auc = 0
         for epoch in epoch_range:
-            print 'start testing checkpoint, iteration =', epoch * 3664
-            self.saver.restore(self.sess, os.path.join(FLAGS.checkpoint_dir, FLAGS.model_name + '-' + str(epoch * 3664)))
+            if not os.path.exists(os.path.join(FLAGS.checkpoint_dir, FLAGS.model_name + '-' + str(epoch) + '.index')):
+                continue
+            print 'start testing checkpoint, iteration =', epoch
+            self.saver.restore(self.sess, os.path.join(FLAGS.checkpoint_dir, FLAGS.model_name + '-' + str(epoch)))
             stack_output = []
             stack_label = []
             total = int(len(self.data_instance_scope) / FLAGS.batch_size)
@@ -258,23 +264,12 @@ class Framework(object):
             print '\nevaluating...'
             stack_output = np.concatenate(stack_output, axis=0)
             stack_label = np.concatenate(stack_label, axis=0)
-            exclude_na_flatten_output = stack_output[:,1:]
-            exclude_na_flatten_label = stack_label[:,1:]
+            exclude_na_flatten_output = np.reshape(stack_output[:,1:], (-1))
+            exclude_na_flatten_label = np.reshape(stack_label[:,1:], (-1))
 
             average_precision = average_precision_score(exclude_na_flatten_label, exclude_na_flatten_output, average="micro")
             print 'average precision:', average_precision
-            auc = 0
-            auc_total = 0
-            for cl in range(FLAGS.num_classes - 1):
-                y_true = exclude_na_flatten_label[:, cl]
-                y_score = exclude_na_flatten_output[:, cl]
-                if np.sum(y_true) < 1:
-                    continue
-                cur_auc = roc_auc_score(y_true=y_true, y_score=y_score)
-                print 'class {} auc: {}'.format(cl + 1, cur_auc)
-                auc += cur_auc
-                auc_total += 1
-            auc = float(auc) / auc_total
+            auc = roc_auc_score(y_true=exclude_na_flatten_label, y_score=exclude_na_flatten_output)
             print 'average auc: {}'.format(auc)
             if auc > best_auc:
                 best_auc = auc

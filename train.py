@@ -35,23 +35,15 @@ tf.app.flags.DEFINE_string('test_result_dir', './test_result', 'path to store th
 tf.app.flags.DEFINE_string('use_adv', False, 'use adversarial training or not')
 tf.app.flags.DEFINE_string('save_epoch', 2, 'save the checkpoint after how many epoches')
 
-tf.app.flags.DEFINE_string('model_name', 'model\'s name')
+tf.app.flags.DEFINE_string('model_name', 'pcnn_att', 'model\'s name')
 
 from framework import Framework 
 def main(_):
-    framework = Framework(is_training=True)
+    from model.pcnn_att import pcnn_att
+    from model.cnn_att import cnn_att
 
-    word_embedding = framework.embedding.word_embedding()
-    pos_embedding = framework.embedding.pos_embedding()
-    embedding = framework.embedding.concat_embedding(word_embedding, pos_embedding)
-    x = framework.encoder.pcnn(embedding, activation=tf.nn.relu)
-    x = framework.selector.attention(x)
-    loss = framework.classifier.softmax_cross_entropy(x)
-    output = framework.classifier.output(x)
-    
-    framework.init_model(loss, output, optimizer=tf.train.GradientDescentOptimizer)
-    framework.load_data()
-    framework.train_bag()
+    model = locals()[FLAGS.model_name]
+    model(is_training=True)
 
 if __name__ == "__main__":
     tf.app.run() 

@@ -10,13 +10,6 @@ class Selector(object):
         self.label_for_select = label_for_select
         self.is_training = is_training
     
-    def one(self, x):
-        with tf.name_scope("one"):
-            relation_matrix = tf.get_variable('relation_matrix', [x.shape[1], FLAGS.num_classes], dtype=tf.float32, initializer=tf.contrib.layers.xavier_initializer())
-            bias = tf.get_variable('bias', [FLAGS.num_classes], dtype=tf.float32, initializer=tf.contrib.layers.xavier_initializer())
-            logits = tf.matmul(x, relation_matrix) + bias
-            return logits
-
     def attention(self, x):
         with tf.name_scope("attention"):
             relation_matrix = tf.get_variable('relation_matrix', [FLAGS.num_classes, x.shape[1]], dtype=tf.float32, initializer=tf.contrib.layers.xavier_initializer())
@@ -29,7 +22,7 @@ class Selector(object):
                 for i in range(FLAGS.batch_size):
                     sen_matrix = x[self.scope[i]:self.scope[i + 1]]
                     attention_score = tf.nn.softmax(tf.reshape(attention_logit[self.scope[i]:self.scope[i + 1]], [1, -1]))
-                    final_repre = tf.reshape(tf.matmul(attention_score, sen_matrix),[FLAGS.hidden_size * 3])
+                    final_repre = tf.squeeze(tf.matmul(attention_score, sen_matrix))
                     tower_repre.append(final_repre)
                 stack_repre = tf.layers.dropout(tf.stack(tower_repre), rate=FLAGS.keep_prob, training=self.is_training)
                 logits = tf.matmul(stack_repre, tf.transpose(relation_matrix)) + bias
