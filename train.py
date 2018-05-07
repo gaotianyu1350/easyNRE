@@ -41,6 +41,8 @@ from framework import Framework
 def main(_):
     from model.pcnn_att import pcnn_att
     from model.cnn_att import cnn_att
+    from model.pcnn_att_adv import pcnn_att_adv
+    from model.pcnn_att_soft_label import pcnn_att_soft_label
 
     model = locals()[FLAGS.model_name]
     model(is_training=True)
