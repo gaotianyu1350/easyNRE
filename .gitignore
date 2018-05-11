@@ -6,3 +6,5 @@ test_result
 origin_data
 origin_data.tar
 *.swp
+sbatch*
+log_sbatch

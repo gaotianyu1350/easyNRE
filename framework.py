@@ -234,6 +234,7 @@ class Framework(object):
         save_label = None
         save_output = None
         best_auc = 0
+        best_epoch = 0
         for epoch in epoch_range:
             if not os.path.exists(os.path.join(FLAGS.checkpoint_dir, FLAGS.model_name + '-' + str(epoch) + '.index')):
                 continue
@@ -273,6 +274,7 @@ class Framework(object):
             print 'average auc: {}'.format(auc)
             if auc > best_auc:
                 best_auc = auc
+                best_epoch = epoch
                 save_label = exclude_na_flatten_label
                 save_output = exclude_na_flatten_output
 
@@ -280,3 +282,10 @@ class Framework(object):
             os.mkdir(FLAGS.test_result_dir)
         np.save(os.path.join(FLAGS.test_result_dir, FLAGS.model_name + '_output.npy'), save_output)
         np.save(os.path.join(FLAGS.test_result_dir, FLAGS.model_name + '_label.npy'), save_label)
+        print 'best epoch:', best_epoch
+
+    def adversarial(self, loss, embedding):
+        perturb = tf.gradients(loss, embedding)
+        perturb = tf.reshape((0.01 * tf.stop_gradient(tf.nn.l2_normalize(perturb, dim=[0, 1, 2]))), [-1, FLAGS.max_length, FLAGS.word_size + 2 * FLAGS.pos_size])
+        embedding = embedding + perturb
+        return embedding

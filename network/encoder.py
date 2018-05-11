@@ -15,7 +15,7 @@ class Encoder(object):
             mask_embedding = tf.constant([[0,0,0], [1,0,0], [0,1,0], [0,0,1]], dtype=np.float32)
             pcnn_mask = tf.nn.embedding_lookup(mask_embedding, self.mask)
             x = tf.expand_dims(x, axis=1)
-            x = tf.layers.conv2d(inputs=x, filters=FLAGS.hidden_size, kernel_size=[1,3], strides=[1, 1], padding='same', kernel_initializer=tf.contrib.layers.xavier_initializer_conv2d())
+            x = tf.layers.conv2d(inputs=x, filters=FLAGS.hidden_size, kernel_size=[1, 3], strides=[1, 1], padding='same', kernel_initializer=tf.contrib.layers.xavier_initializer_conv2d())
             x = tf.reshape(x, [-1, FLAGS.max_length, FLAGS.hidden_size, 1])
             x = tf.reduce_max(tf.reshape(pcnn_mask, [-1, 1, FLAGS.max_length, 3]) * tf.transpose(x,[0, 2, 1, 3]), axis = 2)
             x = activation(tf.reshape(x,[-1, FLAGS.hidden_size * 3]))

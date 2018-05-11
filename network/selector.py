@@ -40,3 +40,32 @@ class Selector(object):
                     test_stack_output = tf.reshape(tf.stack(test_tower_output), [FLAGS.batch_size, FLAGS.num_classes])
                     test_output = test_stack_output
                     return test_output 
+
+    def average(self, x):
+        with tf.name_scope("average"):
+            relation_matrix = tf.get_variable('relation_matrix', [FLAGS.num_classes, x.shape[1]], dtype=tf.float32, initializer=tf.contrib.layers.xavier_initializer())
+            bias = tf.get_variable('bias', [FLAGS.num_classes], dtype=tf.float32, initializer=tf.contrib.layers.xavier_initializer())
+            logits = []
+            x = tf.layers.dropout(x, rate=FLAGS.keep_prob, training=self.is_training)
+            for i in range(FLAGS.batch_size):
+                repre_mat = x[self.scope[i]:self.scope[i + 1]]
+                logit = tf.matmul(repre_mat, tf.transpose(relation_matrix)) + bias
+                logit = tf.reduce_mean(logit, axis=0)
+                logits.append(logit)
+            logits = tf.stack(logits)
+            return logits
+
+    def maximum(self, x):
+        with tf.name_scope("maximum"):
+            relation_matrix = tf.get_variable('relation_matrix', [FLAGS.num_classes, x.shape[1]], dtype=tf.float32, initializer=tf.contrib.layers.xavier_initializer())
+            bias = tf.get_variable('bias', [FLAGS.num_classes], dtype=tf.float32, initializer=tf.contrib.layers.xavier_initializer())
+            logits = []
+            x = tf.layers.dropout(x, rate=FLAGS.keep_prob, training=self.is_training)
+            for i in range(FLAGS.batch_size):
+                repre_mat = x[self.scope[i]:self.scope[i + 1]]
+                logit = tf.matmul(repre_mat, tf.transpose(relation_matrix)) + bias
+                j = tf.argmax(tf.reduce_max(logit, axis=1))
+                logits.append(logit[j])
+            logits = tf.stack(logits)
+            return logits
+

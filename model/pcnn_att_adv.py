@@ -15,9 +15,7 @@ def pcnn_att_adv(is_training):
     if is_training:
         # Add perturbation
         loss = framework.classifier.softmax_cross_entropy(x)
-        perturb = tf.gradients(loss, embedding)
-        perturb = tf.reshape((0.01 * tf.stop_gradient(tf.nn.l2_normalize(perturb, dim=[0, 1, 2]))), [-1, FLAGS.max_length, FLAGS.word_size + 2 * FLAGS.pos_size])
-        embedding = embedding + perturb
+        embedding = framework.adversarial(loss, embedding)
         
         # Train
         with tf.variable_scope('pcnn_att_adv', reuse=True): 
