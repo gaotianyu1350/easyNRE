@@ -28,7 +28,7 @@ def pcnn_att_adv(is_training):
         framework.load_train_data()
         framework.train()
     else:
-        framework.init_test_model(x)
+        framework.init_test_model(tf.nn.softmax(x))
         framework.load_test_data()
         framework.test()
 

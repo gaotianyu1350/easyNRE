@@ -6,9 +6,11 @@ FLAGS = tf.app.flags.FLAGS
 class Embedding(object):
 
     def __init__(self, is_training, word_vec, word, pos1, pos2):
-        self.word_vec = tf.concat([word_vec,
-                                   tf.get_variable('unk_embedding', [1, FLAGS.word_size], dtype=tf.float32, initializer=tf.contrib.layers.xavier_initializer()),
-                                   tf.constant(np.zeros([1, FLAGS.word_size], dtype=np.float32))], 0)
+        temp_word_embedding = tf.get_variable(initializer=word_vec, name = 'temp_word_embedding', dtype=tf.float32)
+        unk_word_embedding = tf.get_variable('unk_embedding', [FLAGS.word_size], dtype=tf.float32, initializer=tf.contrib.layers.xavier_initializer())
+        self.word_vec = tf.concat([temp_word_embedding,
+                                   tf.reshape(unk_word_embedding, [1, FLAGS.word_size]),
+                                   tf.reshape(tf.constant(np.zeros([FLAGS.word_size], dtype=np.float32)), [1, FLAGS.word_size])], 0)
         self.word = word
         self.pos1 = pos1
         self.pos2 = pos2

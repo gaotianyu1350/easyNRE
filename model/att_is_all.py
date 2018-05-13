@@ -1,7 +1,11 @@
 from framework import Framework
 import tensorflow as tf
 
-def pcnn_max(is_training):
+FLAGS = tf.app.flags.FLAGS
+
+def att_is_all(is_training):
+    FLAGS.hidden_size = 256
+    
     if is_training:
         framework = Framework(is_training=True)
     else:
@@ -10,8 +14,8 @@ def pcnn_max(is_training):
     word_embedding = framework.embedding.word_embedding()
     pos_embedding = framework.embedding.pos_embedding()
     embedding = framework.embedding.concat_embedding(word_embedding, pos_embedding)
-    x = framework.encoder.pcnn(embedding, activation=tf.nn.relu)
-    x = framework.selector.maximum(x)
+    x = framework.encoder.attention_is_all_you_need(embedding)
+    x = framework.selector.attention(x, use_dropout=False)
 
     if is_training:
         loss = framework.classifier.softmax_cross_entropy(x)

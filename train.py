@@ -22,11 +22,11 @@ tf.app.flags.DEFINE_integer('hidden_size',230,'hidden feature size')
 tf.app.flags.DEFINE_integer('pos_size',5,'position embedding size')
 tf.app.flags.DEFINE_integer('word_size', 50, 'word embedding size')
 
-tf.app.flags.DEFINE_integer('max_epoch',60,'maximum of training epochs')
+tf.app.flags.DEFINE_integer('max_epoch',30,'maximum of training epochs')
 tf.app.flags.DEFINE_integer('batch_size',160,'entity numbers used each training time')
 tf.app.flags.DEFINE_float('learning_rate',0.5,'entity numbers used each training time')
 tf.app.flags.DEFINE_float('weight_decay',0.00001,'weight_decay')
-tf.app.flags.DEFINE_float('keep_prob',0.5,'dropout rate')
+tf.app.flags.DEFINE_float('drop_prob',0.5,'dropout rate')
 
 tf.app.flags.DEFINE_string('checkpoint_dir', './checkpoint/', 'path to store checkpoint')
 tf.app.flags.DEFINE_string('summary_dir', './summary', 'path to store summary_dir')
@@ -44,6 +44,7 @@ def main(_):
     from model.pcnn_att_soft_label import pcnn_att_soft_label
     from model.pcnn_ave import pcnn_ave
     from model.pcnn_max import pcnn_max
+    from model.att_is_all import att_is_all
 
     model = locals()[FLAGS.model_name]
     model(is_training=True)

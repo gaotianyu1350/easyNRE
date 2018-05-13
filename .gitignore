@@ -8,3 +8,4 @@ origin_data.tar
 *.swp
 sbatch*
 log_sbatch
+.*

@@ -30,7 +30,7 @@ tf.app.flags.DEFINE_string('test_result_dir', './test_result', 'path to store th
 tf.app.flags.DEFINE_string('model_name', 'pcnn_att', 'model\'s name')
 tf.app.flags.DEFINE_string('epoch_range', '(5, 60)', 'checkpoint epoch range')
 
-tf.app.flags.DEFINE_float('keep_prob', 1, 'dropout rate')
+tf.app.flags.DEFINE_float('drop_prob', 0, 'dropout rate')
 
 FLAGS = tf.app.flags.FLAGS
 
@@ -42,6 +42,7 @@ def main(_):
     from model.pcnn_att_soft_label import pcnn_att_soft_label
     from model.pcnn_ave import pcnn_ave
     from model.pcnn_max import pcnn_max
+    from model.att_is_all import att_is_all
 
     model = locals()[FLAGS.model_name]
     model(is_training=False)

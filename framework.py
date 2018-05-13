@@ -36,10 +36,11 @@ class Accuracy(object):
 
 class Framework(object):
 
-    def __init__(self, is_training):
+    def __init__(self, is_training, use_bag=True):
+        self.use_bag = use_bag
         # Place Holder
         self.word = tf.placeholder(dtype=tf.int32, shape=[None, FLAGS.max_length], name='input_word')
-        self.word_vec = tf.placeholder(dtype=tf.float32, shape=[None, FLAGS.word_size], name='word_vec')
+        #self.word_vec = tf.placeholder(dtype=tf.float32, shape=[None, FLAGS.word_size], name='word_vec')
         self.pos1 = tf.placeholder(dtype=tf.int32, shape=[None, FLAGS.max_length], name='input_pos1')
         self.pos2 = tf.placeholder(dtype=tf.int32, shape=[None, FLAGS.max_length], name='input_pos2')
         self.length = tf.placeholder(dtype=tf.int32, shape=[None], name='input_length')
@@ -49,8 +50,10 @@ class Framework(object):
         self.scope = tf.placeholder(dtype=tf.int32, shape=[FLAGS.batch_size + 1], name='scope')    
         self.weights = tf.placeholder(dtype=tf.float32, shape=[FLAGS.batch_size])
 
+        self.data_word_vec = np.load(os.path.join(FLAGS.export_path, 'vec.npy'))
+
         # Network
-        self.embedding = Embedding(is_training, self.word_vec, self.word, self.pos1, self.pos2)
+        self.embedding = Embedding(is_training, self.data_word_vec, self.word, self.pos1, self.pos2)
         self.encoder = Encoder(is_training, self.length, self.mask)
         self.selector = Selector(is_training, self.scope, self.label_for_select)
         self.classifier = Classifier(is_training, self.label, self.weights)
@@ -66,7 +69,7 @@ class Framework(object):
 
     def load_train_data(self):
         print 'reading training data...'
-        self.data_word_vec = np.load(os.path.join(FLAGS.export_path, 'vec.npy'))
+        #self.data_word_vec = np.load(os.path.join(FLAGS.export_path, 'vec.npy'))
         self.data_instance_triple = np.load(os.path.join(FLAGS.export_path, 'train_instance_triple.npy'))
         self.data_instance_scope = np.load(os.path.join(FLAGS.export_path, 'train_instance_scope.npy'))
         self.data_train_length = np.load(os.path.join(FLAGS.export_path, 'train_len.npy'))
@@ -96,7 +99,7 @@ class Framework(object):
 
     def load_test_data(self):
         print 'reading test data...'
-        self.data_word_vec = np.load(os.path.join(FLAGS.export_path, 'vec.npy'))
+        #self.data_word_vec = np.load(os.path.join(FLAGS.export_path, 'vec.npy'))
         self.data_instance_triple = np.load(os.path.join(FLAGS.export_path, 'test_instance_triple.npy'))
         self.data_instance_scope = np.load(os.path.join(FLAGS.export_path, 'test_instance_scope.npy'))
         self.data_test_length = np.load(os.path.join(FLAGS.export_path, 'test_len.npy'))
@@ -151,7 +154,7 @@ class Framework(object):
     def train_one_step(self, index, scope, weights, label, result_needed=[]):
         feed_dict = {
             self.word: self.data_train_word[index, :],
-            self.word_vec: self.data_word_vec,
+            #self.word_vec: self.data_word_vec,
             self.pos1: self.data_train_pos1[index, :],
             self.pos2: self.data_train_pos2[index, :],
             self.mask: self.data_train_mask[index, :],
@@ -179,7 +182,7 @@ class Framework(object):
     def test_one_step(self, index, scope, label, result_needed=[]):
         feed_dict = {
             self.word: self.data_test_word[index, :],
-            self.word_vec: self.data_word_vec,
+            #self.word_vec: self.data_word_vec,
             self.pos1: self.data_test_pos1[index, :],
             self.pos2: self.data_test_pos2[index, :],
             self.mask: self.data_test_mask[index, :],
@@ -192,34 +195,47 @@ class Framework(object):
         self.test_output = result[0]
         result = result[1:]
 
+        #print np.argmax(self.test_output, axis=1)
+        #print label
+
         return result
     
     def train(self, one_step=train_one_step):
         if not os.path.exists(FLAGS.checkpoint_dir):
             os.mkdir(FLAGS.checkpoint_dir)
-        train_order = range(len(self.data_instance_triple))
+        if self.use_bag:
+            train_order = range(len(self.data_instance_triple))
+        else:
+            train_order = range(len(self.word))
         for epoch in range(FLAGS.max_epoch):
-            print('epoch ' + str(epoch + 1) + ' starts...')
+            print('epoch ' + str(epoch) + ' starts...')
             self.acc_NA.clear()
             self.acc_not_NA.clear()
             self.acc_total.clear()
             np.random.shuffle(train_order)
             for i in range(int(len(train_order) / float(FLAGS.batch_size))):
-                input_scope = np.take(self.data_instance_scope, train_order[i * FLAGS.batch_size:(i + 1) * FLAGS.batch_size], axis=0)
-                index = []
-                scope = [0]
-                weights = []
-                label = []
-                for num in input_scope:
-                    index = index + range(num[0], num[1] + 1)
-                    label.append(self.data_train_label[num[0]])
-                    scope.append(scope[len(scope) - 1] + num[1] - num[0] + 1)
-                    weights.append(self.reltot[self.data_train_label[num[0]]])
-
-                loss = one_step(self, index, scope, weights, label, [self.loss])
+                if self.use_bag:
+                    input_scope = np.take(self.data_instance_scope, train_order[i * FLAGS.batch_size:(i + 1) * FLAGS.batch_size], axis=0)
+                    index = []
+                    scope = [0]
+                    weights = []
+                    label = []
+                    for num in input_scope:
+                        index = index + range(num[0], num[1] + 1)
+                        label.append(self.data_train_label[num[0]])
+                        scope.append(scope[len(scope) - 1] + num[1] - num[0] + 1)
+                        weights.append(self.reltot[self.data_train_label[num[0]]])
+                    
+                    loss = one_step(self, index, scope, weights, label, [self.loss])
+                else:
+                    index = range(i * FLAGS.batch_size, (i + 1) * FLAGS.batch_size)
+                    weights = []
+                    for i in index:
+                        weights.append(self.reltot[self.data_train_label[i]])
+                    loss = one_step(self, index, index, weights, self.data_train_label[index], [self.loss])
 
                 time_str = datetime.datetime.now().isoformat()
-                sys.stdout.write("epoch %d step %d time %s | loss : %f, NA accuracy: %f, not NA accuracy: %f, total accuracy %f" % (epoch, i, time_str, loss[0], self.acc_NA.get(), self.acc_not_NA.get(), self.acc_total.get()) + '\r')
+                sys.stdout.write("epoch %d step %d time %s | loss : %f, NA accuracy: %f, not NA accuracy: %f, total accuracy %f" % (epoch, i, time_str, loss[0], self.acc_NA.get(), self.acc_not_NA.get(), self.acc_total.get()) + '\n')
                 sys.stdout.flush()
 
             if (epoch + 1) % FLAGS.save_epoch == 0:
@@ -242,24 +258,32 @@ class Framework(object):
             self.saver.restore(self.sess, os.path.join(FLAGS.checkpoint_dir, FLAGS.model_name + '-' + str(epoch)))
             stack_output = []
             stack_label = []
-            total = int(len(self.data_instance_scope) / FLAGS.batch_size)
+            if self.use_bag:
+                total = int(len(self.data_instance_scope) / FLAGS.batch_size)
+            else:
+                total = int(len(self.word) / FLAGS.batch_size)
             for i in range(total):
-                input_scope = self.data_instance_scope[i * FLAGS.batch_size:(i + 1) * FLAGS.batch_size]
-                index = []
-                scope = [0]
-                label = []
-                for num in input_scope:
-                    index = index + range(num[0], num[1] + 1)
-                    label.append(self.data_test_label[num[0]])
-                    scope.append(scope[len(scope) - 1] + num[1] - num[0] + 1)
+                if self.use_bag:
+                    input_scope = self.data_instance_scope[i * FLAGS.batch_size:(i + 1) * FLAGS.batch_size]
+                    index = []
+                    scope = [0]
+                    label = []
+                    for num in input_scope:
+                        index = index + range(num[0], num[1] + 1)
+                        label.append(self.data_test_label[num[0]])
+                        scope.append(scope[len(scope) - 1] + num[1] - num[0] + 1)
+    
+                    one_step(self, index, scope, label, [])
+                else:
+                    index = range(i * FLAGS.batch_size, (i + 1) * FLAGS.batch_size)
+                    one_step(self, index, index, self.data_train_label[index], [])
 
-                one_step(self, index, scope, label, [])
                 tmp_label = np.zeros((FLAGS.batch_size, FLAGS.num_classes))
                 tmp_label[np.arange(FLAGS.batch_size), label] = 1
                 stack_output.append(self.test_output)
                 stack_label.append(tmp_label)
                 if i % 100 == 0:
-                    sys.stdout.write('predicting {} / {}\r'.format(i, total))
+                    sys.stdout.write('predicting {} / {}\n'.format(i, total))
                     sys.stdout.flush()
             
             print '\nevaluating...'

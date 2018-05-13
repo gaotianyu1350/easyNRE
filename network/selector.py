@@ -9,8 +9,16 @@ class Selector(object):
         self.scope = scope
         self.label_for_select = label_for_select
         self.is_training = is_training
-    
-    def attention(self, x):
+   
+    def no_bag(self, x):
+        with tf.name_scope("no_bag"):
+            x = tf.layers.dropout(x, rate=FLAGS.drop_prob, training=self.is_training)
+            relation_matrix = tf.get_variable('relation_matrix', [FLAGS.num_classes, x.shape[1]], dtype=tf.float32, initializer=tf.contrib.layers.xavier_initializer())
+            bias = tf.get_variable('bias', [FLAGS.num_classes], dtype=tf.float32, initializer=tf.contrib.layers.xavier_initializer())
+            logits = tf.matmul(x, tf.transpose(relation_matrix)) + bias
+            return logits
+
+    def attention(self, x, use_dropout=True):
         with tf.name_scope("attention"):
             relation_matrix = tf.get_variable('relation_matrix', [FLAGS.num_classes, x.shape[1]], dtype=tf.float32, initializer=tf.contrib.layers.xavier_initializer())
             bias = tf.get_variable('bias', [FLAGS.num_classes], dtype=tf.float32, initializer=tf.contrib.layers.xavier_initializer())
@@ -24,7 +32,11 @@ class Selector(object):
                     attention_score = tf.nn.softmax(tf.reshape(attention_logit[self.scope[i]:self.scope[i + 1]], [1, -1]))
                     final_repre = tf.squeeze(tf.matmul(attention_score, sen_matrix))
                     tower_repre.append(final_repre)
-                stack_repre = tf.layers.dropout(tf.stack(tower_repre), rate=FLAGS.keep_prob, training=self.is_training)
+                if use_dropout:
+                    stack_repre = tf.layers.dropout(tf.stack(tower_repre), rate=FLAGS.drop_prob, training=self.is_training)
+                else:
+                    stack_repre = tf.stack(tower_repre)
+
                 logits = tf.matmul(stack_repre, tf.transpose(relation_matrix)) + bias
                 return logits
             else:
@@ -45,27 +57,27 @@ class Selector(object):
         with tf.name_scope("average"):
             relation_matrix = tf.get_variable('relation_matrix', [FLAGS.num_classes, x.shape[1]], dtype=tf.float32, initializer=tf.contrib.layers.xavier_initializer())
             bias = tf.get_variable('bias', [FLAGS.num_classes], dtype=tf.float32, initializer=tf.contrib.layers.xavier_initializer())
-            logits = []
-            x = tf.layers.dropout(x, rate=FLAGS.keep_prob, training=self.is_training)
+            tower_repre = []
+            #x = tf.layers.dropout(x, rate=FLAGS.drop_prob, training=self.is_training)
             for i in range(FLAGS.batch_size):
                 repre_mat = x[self.scope[i]:self.scope[i + 1]]
-                logit = tf.matmul(repre_mat, tf.transpose(relation_matrix)) + bias
-                logit = tf.reduce_mean(logit, axis=0)
-                logits.append(logit)
-            logits = tf.stack(logits)
+                repre = tf.reduce_mean(repre_mat, axis=0)
+                tower_repre.append(repre)
+            stack_repre = tf.layers.dropout(tf.stack(tower_repre), rate=FLAGS.drop_prob, training=self.is_training)
+            logits = tf.matmul(stack_repre, tf.transpose(relation_matrix)) + bias
             return logits
 
     def maximum(self, x):
         with tf.name_scope("maximum"):
             relation_matrix = tf.get_variable('relation_matrix', [FLAGS.num_classes, x.shape[1]], dtype=tf.float32, initializer=tf.contrib.layers.xavier_initializer())
             bias = tf.get_variable('bias', [FLAGS.num_classes], dtype=tf.float32, initializer=tf.contrib.layers.xavier_initializer())
-            logits = []
-            x = tf.layers.dropout(x, rate=FLAGS.keep_prob, training=self.is_training)
+            tower_repre = []
             for i in range(FLAGS.batch_size):
                 repre_mat = x[self.scope[i]:self.scope[i + 1]]
                 logit = tf.matmul(repre_mat, tf.transpose(relation_matrix)) + bias
                 j = tf.argmax(tf.reduce_max(logit, axis=1))
-                logits.append(logit[j])
-            logits = tf.stack(logits)
+                tower_repre.append(repre_mat[j])
+            stack_repre = tf.layers.dropout(tf.stack(tower_repre), rate=FLAGS.drop_prob, training=self.is_training)
+            logits = tf.matmul(stack_repre, tf.transpose(relation_matrix)) + bias
             return logits
 
