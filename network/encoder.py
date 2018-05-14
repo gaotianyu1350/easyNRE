@@ -223,7 +223,7 @@ class Encoder(object):
         
         return outputs
 
-    def attention_is_all_you_need(self, x, num_blocks=6, num_heads=8):
+    def attention_is_all_you_need(self, x, num_blocks=2, num_heads=8):
         enc = tf.layers.dropout(x, rate=FLAGS.drop_prob, training=self.is_training) 
         with tf.variable_scope("att_is_all-encoder"):
             for i in range(num_blocks):

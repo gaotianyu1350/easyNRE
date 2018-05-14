@@ -206,7 +206,7 @@ class Framework(object):
         if self.use_bag:
             train_order = range(len(self.data_instance_triple))
         else:
-            train_order = range(len(self.word))
+            train_order = range(len(self.data_train_word))
         for epoch in range(FLAGS.max_epoch):
             print('epoch ' + str(epoch) + ' starts...')
             self.acc_NA.clear()
@@ -232,7 +232,7 @@ class Framework(object):
                     weights = []
                     for i in index:
                         weights.append(self.reltot[self.data_train_label[i]])
-                    loss = one_step(self, index, index, weights, self.data_train_label[index], [self.loss])
+                    loss = one_step(self, index, index + [0], weights, self.data_train_label[index], [self.loss])
 
                 time_str = datetime.datetime.now().isoformat()
                 sys.stdout.write("epoch %d step %d time %s | loss : %f, NA accuracy: %f, not NA accuracy: %f, total accuracy %f" % (epoch, i, time_str, loss[0], self.acc_NA.get(), self.acc_not_NA.get(), self.acc_total.get()) + '\n')
@@ -251,6 +251,7 @@ class Framework(object):
         save_output = None
         best_auc = 0
         best_epoch = 0
+        print 'test ' + FLAGS.model_name
         for epoch in epoch_range:
             if not os.path.exists(os.path.join(FLAGS.checkpoint_dir, FLAGS.model_name + '-' + str(epoch) + '.index')):
                 continue
@@ -261,7 +262,7 @@ class Framework(object):
             if self.use_bag:
                 total = int(len(self.data_instance_scope) / FLAGS.batch_size)
             else:
-                total = int(len(self.word) / FLAGS.batch_size)
+                total = int(len(self.data_test_word) / FLAGS.batch_size)
             for i in range(total):
                 if self.use_bag:
                     input_scope = self.data_instance_scope[i * FLAGS.batch_size:(i + 1) * FLAGS.batch_size]
@@ -276,10 +277,13 @@ class Framework(object):
                     one_step(self, index, scope, label, [])
                 else:
                     index = range(i * FLAGS.batch_size, (i + 1) * FLAGS.batch_size)
-                    one_step(self, index, index, self.data_train_label[index], [])
+                    one_step(self, index, index + [0], self.data_test_label[index], [])
 
                 tmp_label = np.zeros((FLAGS.batch_size, FLAGS.num_classes))
-                tmp_label[np.arange(FLAGS.batch_size), label] = 1
+                if self.use_bag:
+                    tmp_label[np.arange(FLAGS.batch_size), label] = 1
+                else:
+                    tmp_label[np.arange(FLAGS.batch_size), self.data_test_label[index]] = 1
                 stack_output.append(self.test_output)
                 stack_label.append(tmp_label)
                 if i % 100 == 0:
@@ -296,8 +300,9 @@ class Framework(object):
             print 'average precision:', average_precision
             auc = roc_auc_score(y_true=exclude_na_flatten_label, y_score=exclude_na_flatten_output)
             print 'average auc: {}'.format(auc)
-            if auc > best_auc:
-                best_auc = auc
+            print 'use average pr as metrics'
+            if average_precision > best_auc:
+                best_auc = average_precision
                 best_epoch = epoch
                 save_label = exclude_na_flatten_label
                 save_output = exclude_na_flatten_output

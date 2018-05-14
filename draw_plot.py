@@ -1,5 +1,5 @@
 from sklearn.metrics import precision_recall_curve
-from sklearn.metrics import average_precision_score
+from sklearn.metrics import average_precision_score, roc_auc_score
 import matplotlib
 # Use 'Agg' so this program could run on a remote server
 matplotlib.use('Agg')
@@ -18,7 +18,9 @@ def main():
         y_true = np.reshape(y_true, (-1))
         y_scores = np.reshape(y_scores, (-1))
         precision, recall, threshold = precision_recall_curve(y_true, y_scores)
-        plt.plot(recall, precision, lw=2, label=model)
+        average_pr = average_precision_score(y_true, y_scores)
+        auc = roc_auc_score(y_true=y_true, y_score=y_scores)
+        plt.plot(recall, precision, lw=2, label=model + '-avepr='+str(average_pr))
        
     plt.xlabel('Recall')
     plt.ylabel('Precision')

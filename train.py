@@ -45,6 +45,10 @@ def main(_):
     from model.pcnn_ave import pcnn_ave
     from model.pcnn_max import pcnn_max
     from model.att_is_all import att_is_all
+    from model.pcnn import pcnn
+    from model.cnn_ave import cnn_ave
+    from model.cnn_max import cnn_max
+    from model.cnn import cnn
 
     model = locals()[FLAGS.model_name]
     model(is_training=True)
