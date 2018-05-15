@@ -46,7 +46,7 @@ class Encoder(object):
         with tf.name_scope('rnn'):
             x = tf.layers.dropout(x, rate=FLAGS.drop_prob, training=self.is_training)
             cell = self.__rnn_cell__(FLAGS.hidden_size, cell_name)
-            _, states = tf.nn.dynamic_rnn(cell, x, sequence_length=self.len, dtype=tf.float32, scope='dynamic-rnn')
+            _, states = tf.nn.dynamic_rnn(cell, x, sequence_length=self.length, dtype=tf.float32, scope='dynamic-rnn')
             if isinstance(states, tuple):
                 states = states[0]
             return states
@@ -131,59 +131,62 @@ class Encoder(object):
             Q = tf.layers.dense(queries, num_units, activation=tf.nn.relu) # (N, T_q, C)
             K = tf.layers.dense(keys, num_units, activation=tf.nn.relu) # (N, T_k, C)
             V = tf.layers.dense(keys, num_units, activation=tf.nn.relu) # (N, T_k, C)
+
+            score = tf.matmul(Q, tf.transpose(K, [0, 2, 1]))
+            outputs = tf.matmul(score, V)
             
-            # Split and concat
-            Q_ = tf.concat(tf.split(Q, num_heads, axis=2), axis=0) # (h*N, T_q, C/h) 
-            K_ = tf.concat(tf.split(K, num_heads, axis=2), axis=0) # (h*N, T_k, C/h) 
-            V_ = tf.concat(tf.split(V, num_heads, axis=2), axis=0) # (h*N, T_k, C/h) 
+         #   # Split and concat
+         #   Q_ = tf.concat(tf.split(Q, num_heads, axis=2), axis=0) # (h*N, T_q, C/h) 
+         #   K_ = tf.concat(tf.split(K, num_heads, axis=2), axis=0) # (h*N, T_k, C/h) 
+         #   V_ = tf.concat(tf.split(V, num_heads, axis=2), axis=0) # (h*N, T_k, C/h) 
     
-            # Multiplication
-            outputs = tf.matmul(Q_, tf.transpose(K_, [0, 2, 1])) # (h*N, T_q, T_k)
-            
-            # Scale
-            outputs = outputs / (float(K_.shape.as_list()[-1]) ** 0.5)
-            
-            # Key Masking
-            key_masks = tf.sign(tf.abs(tf.reduce_sum(keys, axis=-1))) # (N, T_k)
-            key_masks = tf.tile(key_masks, [num_heads, 1]) # (h*N, T_k)
-            key_masks = tf.tile(tf.expand_dims(key_masks, 1), [1, tf.shape(queries)[1], 1]) # (h*N, T_q, T_k)
-            
-            paddings = tf.ones_like(outputs)*(-2**32+1)
-            outputs = tf.where(tf.equal(key_masks, 0), paddings, outputs) # (h*N, T_q, T_k)
+         #   # Multiplication
+         #   outputs = tf.matmul(Q_, tf.transpose(K_, [0, 2, 1])) # (h*N, T_q, T_k)
+         #   
+         #   # Scale
+         #   outputs = outputs / (float(K_.shape.as_list()[-1]) ** 0.5)
+         #   
+         #   # Key Masking
+         #   key_masks = tf.sign(tf.abs(tf.reduce_sum(keys, axis=-1))) # (N, T_k)
+         #   key_masks = tf.tile(key_masks, [num_heads, 1]) # (h*N, T_k)
+         #   key_masks = tf.tile(tf.expand_dims(key_masks, 1), [1, tf.shape(queries)[1], 1]) # (h*N, T_q, T_k)
+         #   
+         #   paddings = tf.ones_like(outputs)*(-2**32+1)
+         #   outputs = tf.where(tf.equal(key_masks, 0), paddings, outputs) # (h*N, T_q, T_k)
       
-            # Causality = Future blinding
-            if causality:
-                diag_vals = tf.ones_like(outputs[0, :, :]) # (T_q, T_k)
-                tril = tf.contrib.linalg.LinearOperatorTriL(diag_vals).to_dense() # (T_q, T_k)
-                masks = tf.tile(tf.expand_dims(tril, 0), [tf.shape(outputs)[0], 1, 1]) # (h*N, T_q, T_k)
+         #   # Causality = Future blinding
+         #   if causality:
+         #       diag_vals = tf.ones_like(outputs[0, :, :]) # (T_q, T_k)
+         #       tril = tf.contrib.linalg.LinearOperatorTriL(diag_vals).to_dense() # (T_q, T_k)
+         #       masks = tf.tile(tf.expand_dims(tril, 0), [tf.shape(outputs)[0], 1, 1]) # (h*N, T_q, T_k)
        
-                paddings = tf.ones_like(masks)*(-2**32+1)
-                outputs = tf.where(tf.equal(masks, 0), paddings, outputs) # (h*N, T_q, T_k)
+         #       paddings = tf.ones_like(masks)*(-2**32+1)
+         #       outputs = tf.where(tf.equal(masks, 0), paddings, outputs) # (h*N, T_q, T_k)
       
-            # Activation
-            outputs = tf.nn.softmax(outputs) # (h*N, T_q, T_k)
-             
-            # Query Masking
-            query_masks = tf.sign(tf.abs(tf.reduce_sum(queries, axis=-1))) # (N, T_q)
-            query_masks = tf.tile(query_masks, [num_heads, 1]) # (h*N, T_q)
-            query_masks = tf.tile(tf.expand_dims(query_masks, -1), [1, 1, tf.shape(keys)[1]]) # (h*N, T_q, T_k)
-            outputs *= query_masks # broadcasting. (N, T_q, C)
-              
-            # Dropouts
-            outputs = tf.layers.dropout(outputs, rate=dropout_rate, training=tf.convert_to_tensor(is_training))
-                   
-            # Weighted sum
-            outputs = tf.matmul(outputs, V_) # ( h*N, T_q, C/h)
-            
-            # Restore shape
-            outputs = tf.concat(tf.split(outputs, num_heads, axis=0), axis=2 ) # (N, T_q, C)
-                  
-            # Residual connection
-            if residual:
-                outputs += queries
-                  
-            # Normalize
-            outputs = self.__normalize__(outputs) # (N, T_q, C)
+         #   # Activation
+         #   outputs = tf.nn.softmax(outputs) # (h*N, T_q, T_k)
+         #    
+         #   # Query Masking
+         #   query_masks = tf.sign(tf.abs(tf.reduce_sum(queries, axis=-1))) # (N, T_q)
+         #   query_masks = tf.tile(query_masks, [num_heads, 1]) # (h*N, T_q)
+         #   query_masks = tf.tile(tf.expand_dims(query_masks, -1), [1, 1, tf.shape(keys)[1]]) # (h*N, T_q, T_k)
+         #   outputs *= query_masks # broadcasting. (N, T_q, C)
+         #     
+         #   # Dropouts
+         #   outputs = tf.layers.dropout(outputs, rate=dropout_rate, training=tf.convert_to_tensor(is_training))
+         #          
+         #   # Weighted sum
+         #   outputs = tf.matmul(outputs, V_) # ( h*N, T_q, C/h)
+         #   
+         #   # Restore shape
+         #   outputs = tf.concat(tf.split(outputs, num_heads, axis=0), axis=2 ) # (N, T_q, C)
+         #         
+         #   # Residual connection
+         #   if residual:
+         #       outputs += queries
+         #         
+         #   # Normalize
+         #   outputs = self.__normalize__(outputs) # (N, T_q, C)
      
         return outputs
 
@@ -223,20 +226,32 @@ class Encoder(object):
         
         return outputs
 
-    def attention_is_all_you_need(self, x, num_blocks=2, num_heads=8):
+    def attention_is_all_you_need(self, x, num_blocks=8, num_heads=8):
         enc = tf.layers.dropout(x, rate=FLAGS.drop_prob, training=self.is_training) 
-        with tf.variable_scope("att_is_all-encoder"):
-            for i in range(num_blocks):
-                with tf.variable_scope("enc_num_blocks_{}".format(i)):
-                    ## Multihead Attention ( self-attention)
-                    enc = self.__multihead_attention__(queries=enc,
-                                                       keys=enc,
-                                                       num_units=FLAGS.hidden_size, 
-                                                       num_heads=num_heads, 
-                                                       dropout_rate=FLAGS.drop_prob,
-                                                       is_training=self.is_training,
-                                                       causality=False,
-                                                       residual=(i != 0))
+        #with tf.variable_scope("att_is_all-encoder"):
+        #    for i in range(num_blocks):
+        #        with tf.variable_scope("enc_num_blocks_{}".format(i)):
+        #            ## Multihead Attention ( self-attention)
+        #            enc = self.__multihead_attention__(queries=enc,
+        #                                               keys=enc,
+        #                                               num_units=FLAGS.hidden_size, 
+        #                                               num_heads=num_heads, 
+        #                                               dropout_rate=FLAGS.drop_prob,
+        #                                               is_training=self.is_training,
+        #                                               causality=False,
+        #                                               residual=(i != 0))
+
+        num_units=256 
+        for i in range(num_blocks):
+            Q = tf.layers.dense(enc, num_units, activation=tf.nn.relu) # (N, T_q, C)
+            K = tf.layers.dense(enc, num_units, activation=tf.nn.relu) # (N, T_k, C)
+            V = tf.layers.dense(enc, num_units, activation=tf.nn.relu) # (N, T_k, C)
+
+            score = tf.matmul(Q, tf.transpose(K, [0, 2, 1]))
+            outputs = tf.matmul(score, V)
+            enc = outputs
+ 
+
                     ### Feed Forward
         #            enc = self.__feedforward__(enc, num_units=[4*FLAGS.hidden_size, FLAGS.hidden_size])
 
