@@ -117,8 +117,9 @@ class Framework(object):
         print 'position size     : %d' % (FLAGS.pos_size)
         print 'hidden size        : %d' % (FLAGS.hidden_size)
 
-    def init_train_model(self, loss, output, optimizer=tf.train.GradientDescentOptimizer, pretrain_model=None):
+    def init_train_model(self, loss, output, optimizer=tf.train.GradientDescentOptimizer):
         print 'initializing training model...'
+
         # Loss and output
         self.loss = loss
         self.output = output
@@ -137,10 +138,10 @@ class Framework(object):
 
         # Saver
         self.saver = tf.train.Saver(max_to_keep=None)
-        if pretrain_model is None:
+        if FLAGS.pretrain_model == "None":
             self.sess.run(tf.global_variables_initializer())
         else:
-            self.saver.restore(self.sess, pretrain_model)
+            self.saver.restore(self.sess, FLAGS.pretrain_model)
 
         print 'initializing finished'
 
@@ -152,6 +153,10 @@ class Framework(object):
         print 'initializing finished'
 
     def train_one_step(self, index, scope, weights, label, result_needed=[]):
+        #print self.data_train_word[index, :].shape
+        #print 'limit bag size < 1000'
+        #if self.data_train_word[index, :].shape[0] > 500:
+        #    return [-1]
         feed_dict = {
             self.word: self.data_train_word[index, :],
             #self.word_vec: self.data_word_vec,
@@ -315,6 +320,6 @@ class Framework(object):
 
     def adversarial(self, loss, embedding):
         perturb = tf.gradients(loss, embedding)
-        perturb = tf.reshape((0.01 * tf.stop_gradient(tf.nn.l2_normalize(perturb, dim=[0, 1, 2]))), [-1, FLAGS.max_length, FLAGS.word_size + 2 * FLAGS.pos_size])
+        perturb = tf.reshape((0.01 * tf.stop_gradient(tf.nn.l2_normalize(perturb, axis=[0, 1, 2]))), [-1, FLAGS.max_length, embedding.shape[-1]])
         embedding = embedding + perturb
         return embedding

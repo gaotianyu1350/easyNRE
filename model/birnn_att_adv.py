@@ -3,14 +3,14 @@ import tensorflow as tf
 
 FLAGS = tf.app.flags.FLAGS
 
-def pcnn_att_adv(is_training):
+def birnn_att_adv(is_training):
     if is_training:
-        with tf.variable_scope('pcnn_att_adv', reuse=False): 
+        with tf.variable_scope('birnn_att_adv', reuse=False): 
             framework = Framework(is_training=True)
             word_embedding = framework.embedding.word_embedding()
             pos_embedding = framework.embedding.pos_embedding()
             embedding = framework.embedding.concat_embedding(word_embedding, pos_embedding)
-            x = framework.encoder.pcnn(embedding, activation=tf.nn.relu)
+            x = framework.encoder.birnn(embedding)
             x = framework.selector.attention(x)
 
         # Add perturbation
@@ -18,8 +18,8 @@ def pcnn_att_adv(is_training):
         embedding = framework.adversarial(loss, embedding)
         
         # Train
-        with tf.variable_scope('pcnn_att_adv', reuse=True): 
-            x = framework.encoder.pcnn(embedding, activation=tf.nn.relu)
+        with tf.variable_scope('birnn_att_adv', reuse=True): 
+            x = framework.encoder.birnn(embedding)
             x = framework.selector.attention(x)
             loss = framework.classifier.softmax_cross_entropy(x)
             output = framework.classifier.output(x)
@@ -27,12 +27,12 @@ def pcnn_att_adv(is_training):
         framework.load_train_data()
         framework.train()
     else:
-        with tf.variable_scope('pcnn_att_adv', reuse=False): 
+        with tf.variable_scope('birnn_att_adv', reuse=False): 
             framework = Framework(is_training=False)
             word_embedding = framework.embedding.word_embedding()
             pos_embedding = framework.embedding.pos_embedding()
             embedding = framework.embedding.concat_embedding(word_embedding, pos_embedding)
-            x = framework.encoder.pcnn(embedding, activation=tf.nn.relu)
+            x = framework.encoder.birnn(embedding)
             x = framework.selector.attention(x)
 
         framework.init_test_model(tf.nn.softmax(x))

@@ -9,3 +9,4 @@ origin_data.tar
 sbatch*
 log_sbatch
 .*
+*.sh

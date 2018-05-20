@@ -1,21 +1,17 @@
 from framework import Framework
 import tensorflow as tf
 
-FLAGS = tf.app.flags.FLAGS
-
-def att_is_all(is_training):
-    FLAGS.hidden_size = 320
-    
+def birnn(is_training):
     if is_training:
-        framework = Framework(is_training=True)
+        framework = Framework(is_training=True, use_bag=False)
     else:
-        framework = Framework(is_training=False)
+        framework = Framework(is_training=False, use_bag=False)
 
     word_embedding = framework.embedding.word_embedding()
     pos_embedding = framework.embedding.pos_embedding()
     embedding = framework.embedding.concat_embedding(word_embedding, pos_embedding)
-    x = framework.encoder.attention_is_all_you_need(embedding)
-    x = framework.selector.attention(x)
+    x = framework.encoder.birnn(embedding)
+    x = framework.selector.no_bag(x)
 
     if is_training:
         loss = framework.classifier.softmax_cross_entropy(x)

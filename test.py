@@ -51,7 +51,28 @@ def main(_):
     from model.rnn_max import rnn_max
     from model.rnn_ave import rnn_ave
     from model.rnn import rnn
+    from model.birnn import birnn
+    from model.birnn_max import birnn_max
+    from model.birnn_ave import birnn_ave
+    from model.birnn_att import birnn_att
 
+    from model.pcnn_att_tanh import pcnn_att_tanh
+
+    from model.pcnn_ave_adv import pcnn_ave_adv
+    from model.pcnn_max_adv import pcnn_max_adv
+    from model.cnn_ave_adv import cnn_ave_adv 
+    from model.cnn_max_adv import cnn_max_adv
+    from model.cnn_att_adv import cnn_att_adv
+    from model.rnn_att_adv import rnn_att_adv
+    from model.rnn_max_adv import rnn_max_adv
+    from model.rnn_ave_adv import rnn_ave_adv
+    from model.birnn_max_adv import birnn_max_adv  
+    from model.birnn_ave_adv import birnn_ave_adv
+    from model.birnn_att_adv import birnn_att_adv
+    from model.pcnn_att_adam import pcnn_att_adam
+
+    if not FLAGS.model_name in locals():
+        exit()
     model = locals()[FLAGS.model_name]
     model(is_training=False)
 

@@ -21,6 +21,7 @@ def main():
         average_pr = average_precision_score(y_true, y_scores)
         auc = roc_auc_score(y_true=y_true, y_score=y_scores)
         plt.plot(recall, precision, lw=2, label=model + '-avepr='+str(average_pr))
+        print model + '-avepr=' + str(average_pr)
        
     plt.xlabel('Recall')
     plt.ylabel('Precision')
