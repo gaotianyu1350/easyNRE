@@ -9,7 +9,9 @@ from network.encoder import Encoder
 from network.selector import Selector
 from network.classifier import Classifier
 import os
-from sklearn.metrics import average_precision_score, roc_auc_score
+import sklearn.metrics
+
+import time
 
 FLAGS = tf.app.flags.FLAGS
 
@@ -100,7 +102,12 @@ class Framework(object):
     def load_test_data(self):
         print 'reading test data...'
         #self.data_word_vec = np.load(os.path.join(FLAGS.export_path, 'vec.npy'))
-        self.data_instance_triple = np.load(os.path.join(FLAGS.export_path, 'test_instance_triple.npy'))
+        self.data_instance_entity = np.load(os.path.join(FLAGS.export_path, 'test_instance_entity.npy'))
+        self.data_instance_entity_no_bag = np.load(os.path.join(FLAGS.export_path, 'test_instance_entity_no_bag.npy'))
+        instance_triple = np.load(os.path.join(FLAGS.export_path, 'test_instance_triple.npy'))
+        self.data_instance_triple = {}
+        for item in instance_triple:
+            self.data_instance_triple[(item[0], item[1], item[2])] = 1
         self.data_instance_scope = np.load(os.path.join(FLAGS.export_path, 'test_instance_scope.npy'))
         self.data_test_length = np.load(os.path.join(FLAGS.export_path, 'test_len.npy'))
         self.data_test_label = np.load(os.path.join(FLAGS.export_path, 'test_label.npy'))
@@ -200,9 +207,6 @@ class Framework(object):
         self.test_output = result[0]
         result = result[1:]
 
-        #print np.argmax(self.test_output, axis=1)
-        #print label
-
         return result
     
     def train(self, one_step=train_one_step):
@@ -252,8 +256,8 @@ class Framework(object):
     def test(self, one_step=test_one_step):
         epoch_range = eval(FLAGS.epoch_range)
         epoch_range = range(epoch_range[0], epoch_range[1])
-        save_label = None
-        save_output = None
+        save_x = None
+        save_y = None
         best_auc = 0
         best_epoch = 0
         print 'test ' + FLAGS.model_name
@@ -268,6 +272,9 @@ class Framework(object):
                 total = int(len(self.data_instance_scope) / FLAGS.batch_size)
             else:
                 total = int(len(self.data_test_word) / FLAGS.batch_size)
+
+            test_result = []
+            
             for i in range(total):
                 if self.use_bag:
                     input_scope = self.data_instance_scope[i * FLAGS.batch_size:(i + 1) * FLAGS.batch_size]
@@ -283,39 +290,49 @@ class Framework(object):
                 else:
                     index = range(i * FLAGS.batch_size, (i + 1) * FLAGS.batch_size)
                     one_step(self, index, index + [0], self.data_test_label[index], [])
+               
+                for j in range(len(self.test_output)):
+                    pred = self.test_output[j]
+                    if self.use_bag:
+                        entity = self.data_instance_entity[j + i * FLAGS.batch_size]
+                    else:
+                        entity = self.data_instance_entity_no_bag[j + i * FLAGS.batch_size]
+                    for rel in range(1, len(pred)):
+                        flag = int(((entity[0], entity[1], rel) in self.data_instance_triple))
+                        test_result.append([(entity[0], entity[1], rel), flag, pred[rel]])
 
-                tmp_label = np.zeros((FLAGS.batch_size, FLAGS.num_classes))
-                if self.use_bag:
-                    tmp_label[np.arange(FLAGS.batch_size), label] = 1
-                else:
-                    tmp_label[np.arange(FLAGS.batch_size), self.data_test_label[index]] = 1
-                stack_output.append(self.test_output)
-                stack_label.append(tmp_label)
                 if i % 100 == 0:
                     sys.stdout.write('predicting {} / {}\n'.format(i, total))
                     sys.stdout.flush()
             
             print '\nevaluating...'
-            stack_output = np.concatenate(stack_output, axis=0)
-            stack_label = np.concatenate(stack_label, axis=0)
-            exclude_na_flatten_output = np.reshape(stack_output[:,1:], (-1))
-            exclude_na_flatten_label = np.reshape(stack_label[:,1:], (-1))
 
-            average_precision = average_precision_score(exclude_na_flatten_label, exclude_na_flatten_output, average="micro")
-            print 'average precision:', average_precision
-            auc = roc_auc_score(y_true=exclude_na_flatten_label, y_score=exclude_na_flatten_output)
-            print 'average auc: {}'.format(auc)
-            print 'use average pr as metrics'
-            if average_precision > best_auc:
-                best_auc = average_precision
+            sorted_test_result = sorted(test_result, key=lambda x: x[2])
+            pr_result_x = []
+            pr_result_y = []
+            correct = 0
+            total_recall = len(self.data_instance_triple.keys())
+            for i, item in enumerate(sorted_test_result[::-1]):
+                if item[1] == 1:
+                    correct += 1
+                pr_result_y.append(float(correct) / (i + 1))
+                pr_result_x.append(float(correct) / total_recall)
+                if i > 5000:
+                    break
+            print correct
+
+            auc = sklearn.metrics.auc(x=pr_result_x, y=pr_result_y)
+            print 'auc:', auc
+            if auc > best_auc:
+                best_auc = auc
                 best_epoch = epoch
-                save_label = exclude_na_flatten_label
-                save_output = exclude_na_flatten_output
+                save_x = pr_result_x
+                save_y = pr_result_y
 
         if not os.path.exists(FLAGS.test_result_dir):
             os.mkdir(FLAGS.test_result_dir)
-        np.save(os.path.join(FLAGS.test_result_dir, FLAGS.model_name + '_output.npy'), save_output)
-        np.save(os.path.join(FLAGS.test_result_dir, FLAGS.model_name + '_label.npy'), save_label)
+        np.save(os.path.join(FLAGS.test_result_dir, FLAGS.model_name + '_x.npy'), save_x)
+        np.save(os.path.join(FLAGS.test_result_dir, FLAGS.model_name + '_y.npy'), save_y)
         print 'best epoch:', best_epoch
 
     def adversarial(self, loss, embedding):
