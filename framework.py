@@ -107,7 +107,7 @@ class Framework(object):
         instance_triple = np.load(os.path.join(FLAGS.export_path, 'test_instance_triple.npy'))
         self.data_instance_triple = {}
         for item in instance_triple:
-            self.data_instance_triple[(item[0], item[1], item[2])] = 1
+            self.data_instance_triple[(item[0], item[1], int(item[2]))] = 1
         self.data_instance_scope = np.load(os.path.join(FLAGS.export_path, 'test_instance_scope.npy'))
         self.data_test_length = np.load(os.path.join(FLAGS.export_path, 'test_len.npy'))
         self.data_test_label = np.load(os.path.join(FLAGS.export_path, 'test_label.npy'))
@@ -274,7 +274,7 @@ class Framework(object):
                 total = int(len(self.data_test_word) / FLAGS.batch_size)
 
             test_result = []
-            
+            total_recall = 0 
             for i in range(total):
                 if self.use_bag:
                     input_scope = self.data_instance_scope[i * FLAGS.batch_size:(i + 1) * FLAGS.batch_size]
@@ -299,6 +299,7 @@ class Framework(object):
                         entity = self.data_instance_entity_no_bag[j + i * FLAGS.batch_size]
                     for rel in range(1, len(pred)):
                         flag = int(((entity[0], entity[1], rel) in self.data_instance_triple))
+                        total_recall += flag
                         test_result.append([(entity[0], entity[1], rel), flag, pred[rel]])
 
                 if i % 100 == 0:
@@ -311,7 +312,6 @@ class Framework(object):
             pr_result_x = []
             pr_result_y = []
             correct = 0
-            total_recall = len(self.data_instance_triple.keys())
             for i, item in enumerate(sorted_test_result[::-1]):
                 if item[1] == 1:
                     correct += 1
@@ -319,7 +319,6 @@ class Framework(object):
                 pr_result_x.append(float(correct) / total_recall)
                 if i > 5000:
                     break
-            print correct
 
             auc = sklearn.metrics.auc(x=pr_result_x, y=pr_result_y)
             print 'auc:', auc

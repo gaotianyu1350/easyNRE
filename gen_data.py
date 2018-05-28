@@ -207,7 +207,7 @@ def init_test_files(name):
                 sen_word[s][i] = word2id[word]
         sen_len[s] = min(fixlen, len(sentence))
         sen_label[s] = relation
-        tup = (en1_id, en2_id, relation)
+        tup = (en1_id, en2_id, int(relation))
         instance_entity_no_bag.append(tup[:2])
         if instance_triple_with_NA == [] or instance_triple_with_NA[len(instance_triple_with_NA) - 1] != tup:
             if instance_triple_with_NA == [] or instance_triple_with_NA[len(instance_triple_with_NA) - 1][:2] != tup[:2]:
