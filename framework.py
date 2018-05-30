@@ -3,7 +3,6 @@ import numpy as np
 import tensorflow.contrib.slim as slim
 import datetime
 import sys
-
 from network.embedding import Embedding
 from network.encoder import Encoder
 from network.selector import Selector
@@ -107,7 +106,7 @@ class Framework(object):
         instance_triple = np.load(os.path.join(FLAGS.export_path, 'test_instance_triple.npy'))
         self.data_instance_triple = {}
         for item in instance_triple:
-            self.data_instance_triple[(item[0], item[1], int(item[2]))] = 1
+            self.data_instance_triple[(item[0], item[1], int(item[2]))] = 0
         self.data_instance_scope = np.load(os.path.join(FLAGS.export_path, 'test_instance_scope.npy'))
         self.data_test_length = np.load(os.path.join(FLAGS.export_path, 'test_len.npy'))
         self.data_test_label = np.load(os.path.join(FLAGS.export_path, 'test_label.npy'))
@@ -277,7 +276,7 @@ class Framework(object):
             total_recall = 0 
             for i in range(total):
                 if self.use_bag:
-                    input_scope = self.data_instance_scope[i * FLAGS.batch_size:(i + 1) * FLAGS.batch_size]
+                    input_scope = self.data_instance_scope[i * FLAGS.batch_size:min((i + 1) * FLAGS.batch_size, len(self.data_instance_scope))]
                     index = []
                     scope = [0]
                     label = []
@@ -288,7 +287,7 @@ class Framework(object):
     
                     one_step(self, index, scope, label, [])
                 else:
-                    index = range(i * FLAGS.batch_size, (i + 1) * FLAGS.batch_size)
+                    index = range(i * FLAGS.batch_size, min((i + 1) * FLAGS.batch_size, len(self.data_test_word)))
                     one_step(self, index, index + [0], self.data_test_label[index], [])
                
                 for j in range(len(self.test_output)):
@@ -317,8 +316,8 @@ class Framework(object):
                     correct += 1
                 pr_result_y.append(float(correct) / (i + 1))
                 pr_result_x.append(float(correct) / total_recall)
-                if i > 5000:
-                    break
+                #if i > 5000:
+                #    break
 
             auc = sklearn.metrics.auc(x=pr_result_x, y=pr_result_y)
             print 'auc:', auc

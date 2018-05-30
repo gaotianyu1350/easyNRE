@@ -14,6 +14,7 @@ class Classifier(object):
         with tf.name_scope("loss"):
             label_onehot = tf.one_hot(indices=self.label, depth=FLAGS.num_classes, dtype=tf.int32)
             loss = tf.losses.softmax_cross_entropy(onehot_labels=label_onehot, logits=x, weights=self.weights)
+            #loss = tf.losses.softmax_cross_entropy(onehot_labels=label_onehot, logits=x)
             tf.summary.scalar('loss', loss)
             return loss
 

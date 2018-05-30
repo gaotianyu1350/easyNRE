@@ -165,6 +165,8 @@ def init_test_files(name):
     instance_triple_with_NA = []
     instance_entity = []
     instance_entity_no_bag = []
+
+    ss = [] 
     for s in range(total):
         content = f.readline().strip().split()
         sentence = content[5:-1]
@@ -173,6 +175,13 @@ def init_test_files(name):
         en1_name = content[2]
         en2_name = content[3]
         rel_name = content[4]
+
+        ss.append((en1_id + '\t' + en2_id + '\t' + rel_name, sentence, en1_id, en2_id, en1_name, en2_name, rel_name))
+    
+    ss = sorted(ss, key=lambda x:x[0])
+        
+    for s in range(total):
+        unique_id, sentence, en1_id, en2_id, en1_name, en2_name, rel_name = ss[s]
         if rel_name in relation2id:
             relation = relation2id[rel_name]
         else:
