@@ -13,13 +13,14 @@ def birnn_max_adv(is_training):
             x = framework.encoder.birnn(embedding)
             x = framework.selector.maximum(x)
 
-        # Add perturbation
+        # Add perturbation 
         loss = framework.classifier.softmax_cross_entropy(x)
-        embedding = framework.adversarial(loss, embedding)
+        new_word_embedding = framework.adversarial(loss, word_embedding)
+        new_embedding = framework.embedding.concat_embedding(new_word_embedding, pos_embedding)
         
         # Train
         with tf.variable_scope('birnn_max_adv', reuse=True): 
-            x = framework.encoder.birnn(embedding)
+            x = framework.encoder.birnn(new_embedding)
             x = framework.selector.maximum(x)
             loss = framework.classifier.softmax_cross_entropy(x)
             output = framework.classifier.output(x)

@@ -16,11 +16,12 @@ def cnn_max_adv(is_training):
 
         # Add perturbation
         loss = framework.classifier.softmax_cross_entropy(x)
-        embedding = framework.adversarial(loss, embedding)
+        new_word_embedding = framework.adversarial(loss, word_embedding)
+        new_embedding = framework.embedding.concat_embedding(new_word_embedding, pos_embedding)
         
         # Train
         with tf.variable_scope('cnn_max_adv', reuse=True): 
-            x = framework.encoder.cnn(embedding, activation=tf.nn.relu)
+            x = framework.encoder.cnn(new_embedding, activation=tf.nn.relu)
             x = framework.selector.maximum(x)
             loss = framework.classifier.softmax_cross_entropy(x)
             output = framework.classifier.output(x)
