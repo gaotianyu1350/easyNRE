@@ -45,7 +45,6 @@ def main(_):
     from model.pcnn_att_soft_label import pcnn_att_soft_label
     from model.pcnn_ave import pcnn_ave
     from model.pcnn_max import pcnn_max
-    from model.att_is_all import att_is_all
     from model.pcnn import pcnn
     from model.cnn_ave import cnn_ave
     from model.cnn_max import cnn_max
@@ -72,8 +71,7 @@ def main(_):
     from model.birnn_max_adv import birnn_max_adv  
     from model.birnn_ave_adv import birnn_ave_adv
     from model.birnn_att_adv import birnn_att_adv
-    from model.pcnn_att_adam import pcnn_att_adam
-    
+    from model.pcnn_att_adam import pcnn_att_adam 
 
     model = locals()[FLAGS.model_name]
     model(is_training=True)

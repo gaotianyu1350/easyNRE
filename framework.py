@@ -107,7 +107,7 @@ class Framework(object):
         self.data_instance_triple = {}
         for item in instance_triple:
             self.data_instance_triple[(item[0], item[1], int(item[2]))] = 0
-        self.data_instance_scope = np.load(os.path.join(FLAGS.export_path, 'test_instance_scope2.npy'))
+        self.data_instance_scope = np.load(os.path.join(FLAGS.export_path, 'test_instance_scope.npy'))
         self.data_test_length = np.load(os.path.join(FLAGS.export_path, 'test_len.npy'))
         self.data_test_label = np.load(os.path.join(FLAGS.export_path, 'test_label.npy'))
         self.data_test_word = np.load(os.path.join(FLAGS.export_path, 'test_word.npy'))
