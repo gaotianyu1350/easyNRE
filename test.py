@@ -30,7 +30,7 @@ tf.app.flags.DEFINE_string('test_result_dir', './test_result', 'path to store th
 tf.app.flags.DEFINE_string('model_name', 'pcnn_att', 'model\'s name')
 tf.app.flags.DEFINE_string('epoch_range', '(5, 60)', 'checkpoint epoch range')
 
-tf.app.flags.DEFINE_float('drop_prob', 0, 'dropout rate')
+tf.app.flags.DEFINE_float('drop_prob', 0.5, 'dropout rate')
 
 FLAGS = tf.app.flags.FLAGS
 

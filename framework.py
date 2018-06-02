@@ -203,7 +203,13 @@ class Framework(object):
             self.scope: np.array(scope),
         }
         result = self.sess.run([self.output] + result_needed, feed_dict)
-        self.test_output = result[0]
+        if self.use_bag:
+            self.test_output = result[0]
+        else:
+            tmp_output = result[0]
+            self.test_output = []
+            for i in range(FLAGS.batch_size):
+                self.test_output.append(np.mean(tmp_output[scope[i]:scope[i + 1]], axis=0))
         result = result[1:]
 
         return result
@@ -267,35 +273,25 @@ class Framework(object):
             self.saver.restore(self.sess, os.path.join(FLAGS.checkpoint_dir, FLAGS.model_name + '-' + str(epoch)))
             stack_output = []
             stack_label = []
-            if self.use_bag:
-                total = int(len(self.data_instance_scope) / FLAGS.batch_size)
-            else:
-                total = int(len(self.data_test_word) / FLAGS.batch_size)
+            total = int(len(self.data_instance_scope) / FLAGS.batch_size)
 
             test_result = []
             total_recall = 0 
             for i in range(total):
-                if self.use_bag:
-                    input_scope = self.data_instance_scope[i * FLAGS.batch_size:min((i + 1) * FLAGS.batch_size, len(self.data_instance_scope))]
-                    index = []
-                    scope = [0]
-                    label = []
-                    for num in input_scope:
-                        index = index + range(num[0], num[1] + 1)
-                        label.append(self.data_test_label[num[0]])
-                        scope.append(scope[len(scope) - 1] + num[1] - num[0] + 1)
+                input_scope = self.data_instance_scope[i * FLAGS.batch_size:min((i + 1) * FLAGS.batch_size, len(self.data_instance_scope))]
+                index = []
+                scope = [0]
+                label = []
+                for num in input_scope:
+                    index = index + range(num[0], num[1] + 1)
+                    label.append(self.data_test_label[num[0]])
+                    scope.append(scope[len(scope) - 1] + num[1] - num[0] + 1)
     
-                    one_step(self, index, scope, label, [])
-                else:
-                    index = range(i * FLAGS.batch_size, min((i + 1) * FLAGS.batch_size, len(self.data_test_word)))
-                    one_step(self, index, index + [0], self.data_test_label[index], [])
+                one_step(self, index, scope, label, [])
                
                 for j in range(len(self.test_output)):
                     pred = self.test_output[j]
-                    if self.use_bag:
-                        entity = self.data_instance_entity[j + i * FLAGS.batch_size]
-                    else:
-                        entity = self.data_instance_entity_no_bag[j + i * FLAGS.batch_size]
+                    entity = self.data_instance_entity[j + i * FLAGS.batch_size]
                     for rel in range(1, len(pred)):
                         flag = int(((entity[0], entity[1], rel) in self.data_instance_triple))
                         total_recall += flag

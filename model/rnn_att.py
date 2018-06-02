@@ -8,7 +8,7 @@ def rnn_att(is_training):
         framework = Framework(is_training=False)
 
     word_embedding = framework.embedding.word_embedding()
-    pos_embedding = framework.embedding.pos_embedding()
+    pos_embedding = framework.embedding.pos_embedding(simple_pos=True)
     embedding = framework.embedding.concat_embedding(word_embedding, pos_embedding)
     x = framework.encoder.rnn(embedding)
     x = framework.selector.attention(x)
